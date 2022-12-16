@@ -3,7 +3,9 @@ package io.chrisdavenport.natchezlocal
 import io.chrisdavenport.fiberlocal.FiberLocal
 import natchez._
 import cats.effect.kernel._
+import cats.effect.syntax.all._
 import cats.syntax.all._
+import cats._
 
 object TraceLocal {
 
@@ -27,6 +29,39 @@ object TraceLocal {
 
       def traceUri =
         local.get.flatMap(_.traceUri)
-    }
 
+      override def log(fields: (String, TraceValue)*): F[Unit] =
+        local.get.flatMap(_.log(fields: _*))
+
+      override def log(event: String): F[Unit] =
+        local.get.flatMap(_.log(event))
+
+      override def attachError(err: Throwable): F[Unit] =
+        local.get.flatMap(_.attachError(err))
+
+      override def spanR(name: String, kernel: Option[Kernel]): Resource[F, F ~> F] =
+        Resource {
+          local.get.flatMap { parent =>
+            kernel.fold(parent.span(name))(parent.span(name, _))
+              .allocated
+              .map {
+                _.leftMap { child =>
+                  new (F ~> F) {
+                    override def apply[A](fa: F[A]): F[A] =
+                      (local.set(child) >> fa.onError {
+                        case e => child.attachError(e)
+                      }).guarantee(local.set(parent))
+                  }
+                }
+              }
+          }
+        }
+
+      override def span[A](name: String, kernel: Kernel)(k: F[A]): F[A] =
+        local.get.flatMap { parent =>
+          parent.span(name, kernel).use { child =>
+            (local.set(child) >> k).guarantee(local.set(parent))
+          }
+        }
+    }
 }
