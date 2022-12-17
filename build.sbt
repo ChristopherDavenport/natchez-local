@@ -1,4 +1,4 @@
-ThisBuild / tlBaseVersion := "0.1" // your current series x.y
+ThisBuild / tlBaseVersion := "0.2" // your current series x.y
 
 ThisBuild / organization := "io.chrisdavenport"
 ThisBuild / organizationName := "Christopher Davenport"
@@ -12,7 +12,7 @@ ThisBuild / tlSonatypeUseLegacyHost := true
 
 val Scala213 = "2.13.7"
 
-ThisBuild / crossScalaVersions := Seq("2.12.15", Scala213, "3.1.1")
+ThisBuild / crossScalaVersions := Seq("2.12.15", Scala213, "3.2.1")
 ThisBuild / scalaVersion := Scala213
 
 ThisBuild / testFrameworks += new TestFramework("munit.Framework")
@@ -35,10 +35,10 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
     libraryDependencies ++= Seq(
       "org.typelevel"               %%% "cats-core"                  % catsV,
       "org.typelevel"               %%% "cats-effect"                % catsEffectV,
-      "org.tpolecat"                %%% "natchez-core"               % "0.1.6",
+      "org.tpolecat"                %%% "natchez-core"               % "0.2.2",
       "io.chrisdavenport"           %%% "fiberlocal"                 % "0.1.1",
       "org.typelevel"               %%% "munit-cats-effect-3"        % munitCatsEffectV         % Test,
-
+      "org.tpolecat"                %%% "natchez-noop"               % "0.2.2"                  % Test,
     )
   ).jsSettings(
     scalaJSLinkerConfig ~= { _.withModuleKind(ModuleKind.CommonJSModule)},
