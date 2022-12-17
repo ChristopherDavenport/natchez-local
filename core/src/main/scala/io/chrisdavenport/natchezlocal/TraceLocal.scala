@@ -40,22 +40,22 @@ object TraceLocal {
         local.get.flatMap(_.attachError(err))
 
       override def spanR(name: String, kernel: Option[Kernel]): Resource[F, F ~> F] =
-        Resource {
-          local.get.flatMap { parent =>
+        local.get.toResource
+          .flatMap { parent =>
             kernel.fold(parent.span(name))(parent.span(name, _))
-              .allocated
-              .map {
-                _.leftMap { child =>
-                  new (F ~> F) {
-                    override def apply[A](fa: F[A]): F[A] =
-                      (local.set(child) >> fa.onError {
-                        case e => child.attachError(e)
-                      }).guarantee(local.set(parent))
-                  }
+              .map { child =>
+                new (F ~> F) {
+                  override def apply[A](fa: F[A]): F[A] =
+                    local.get.flatMap { old =>
+                      local.set(child).bracket { _ =>
+                        fa.onError {
+                          case e => child.attachError(e)
+                        }
+                      } { _ => local.set(old) }
+                    }
                 }
               }
           }
-        }
 
       override def span[A](name: String, kernel: Kernel)(k: F[A]): F[A] =
         local.get.flatMap { parent =>
